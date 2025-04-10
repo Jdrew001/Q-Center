@@ -7,7 +7,7 @@ console.log("🎮 Queue Mock System initialized");
 // Configuration for the mock
 const MOCK_CONFIG = {
   enabled: true,           // Set to false to disable mocking
-  initialPosition: 500,    // Starting queue position
+  initialPosition: 20,    // Starting queue position
   decrementInterval: 5000, // How often to decrease position (ms)
   decrementAmount: 2,      // How much to decrease by each time
   minPosition: 1           // Lowest position before "resetting" queue

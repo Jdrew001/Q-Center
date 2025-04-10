@@ -145,7 +145,7 @@
     <script>
         // Keep track of the mock state
         let isMockEnabled = true;
-        let mockPosition = 500;
+        let mockPosition = 20;
         let debugLines = [];
         let isPreviewVisible = true;
         
@@ -202,7 +202,7 @@
             mockStatus.textContent = `Active (position: ${mockPosition})`;
             
             // Decrease the position
-            mockPosition = Math.max(1, mockPosition - 2);
+            mockPosition = Math.max(0, mockPosition - 2);
         }
         
         // Add debug output
