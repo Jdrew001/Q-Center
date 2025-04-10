@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Center Queue Test Page</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #e4000f; /* Pokémon red */
+            text-align: center;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #e4000f;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #c20000;
+        }
+        .mock-controls {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+        #mockStatus {
+            font-weight: bold;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            height: 200px;
+            overflow-y: scroll;
+        }
+        
+        /* Overlay styles - copied from your overlay.css */
+        #queue-position-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            color: #333333;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: gentle-pulse 3s ease-in-out infinite;
+            
+            /* Thicker Pokéball borders */
+            border: 12px solid #333333;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        @keyframes gentle-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Preview overlay (manually controlled in the test page) */
+        #preview-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            color: #333333;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: gentle-pulse 3s ease-in-out infinite;
+            
+            /* Thicker Pokéball borders */
+            border: 12px solid #333333;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pokémon Center Queue Tracker Test Page</h1>
+    
+    <div class="container">
+        <h2>Extension Testing Environment</h2>
+        <p>This page simulates the Pokémon Center website for testing your queue tracker extension.</p>
+        
+        <div class="mock-controls">
+            <h3>Mock Queue Controls</h3>
+            <p>Current status: <span id="mockStatus">Active (position: loading...)</span></p>
+            
+            <button id="triggerManual">Trigger Manual Queue Update</button>
+            <button id="resetQueue">Reset Queue Position</button>
+            <button id="toggleMock">Disable Mock</button>
+        </div>
+        
+        <div class="mock-controls">
+            <h3>Overlay Preview</h3>
+            <p>This preview shows how your overlay would look (left side of screen). The actual extension overlay should appear on the right side.</p>
+            <button id="togglePreview">Hide Preview</button>
+        </div>
+        
+        <h3>Debugging Output</h3>
+        <pre id="debugOutput">Extension logs will appear here...</pre>
+    </div>
+    
+    <!-- Manual preview of the overlay (controlled by test page) -->
+    <div id="preview-overlay">Position: #500</div>
+    
+    <script>
+        // Keep track of the mock state
+        let isMockEnabled = true;
+        let mockPosition = 500;
+        let debugLines = [];
+        let isPreviewVisible = true;
+        
+        // Elements
+        const mockStatus = document.getElementById('mockStatus');
+        const debugOutput = document.getElementById('debugOutput');
+        const triggerManualBtn = document.getElementById('triggerManual');
+        const resetQueueBtn = document.getElementById('resetQueue');
+        const toggleMockBtn = document.getElementById('toggleMock');
+        const previewOverlay = document.getElementById('preview-overlay');
+        const togglePreviewBtn = document.getElementById('togglePreview');
+        
+        // Simulate a queue API response
+        function simulateQueueRequest() {
+            if (!isMockEnabled) return;
+            
+            // Create a fake URL that matches what the background script is looking for
+            const fakeUrl = "https://www.pokemoncenter.com/_Incapsula_Resource?SWWRGTS=mock" + Date.now();
+            
+            // Log the event
+            addDebugLine(`Triggered mock queue request: ${fakeUrl}`);
+            
+            // Create and dispatch a custom event that mimics the completed request
+            const mockRequestEvent = new CustomEvent("mockWebRequest", {
+                detail: {
+                    url: fakeUrl,
+                    tabId: 123, // Fake tab ID
+                    initiator: "https://www.pokemoncenter.com"
+                }
+            });
+            document.dispatchEvent(mockRequestEvent);
+            
+            // Prepare mock response data
+            const mockResponse = {
+                pos: mockPosition,
+                waitTimeMs: mockPosition * 1000,
+                waitTimeSec: mockPosition,
+                waitTimeMin: Math.floor(mockPosition / 60)
+            };
+            
+            // Dispatch a message event to simulate the content script receiving a message
+            const messageEvent = new CustomEvent("mockContentScriptMessage", {
+                detail: {
+                    type: "UPDATE_QUEUE_POSITION",
+                    position: mockPosition
+                }
+            });
+            document.dispatchEvent(messageEvent);
+            
+            // Also update our preview overlay
+            previewOverlay.textContent = `Position: #${mockPosition}`;
+            
+            // Update the display
+            mockStatus.textContent = `Active (position: ${mockPosition})`;
+            
+            // Decrease the position
+            mockPosition = Math.max(1, mockPosition - 2);
+        }
+        
+        // Add debug output
+        function addDebugLine(text) {
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+            
+            debugLines.push(`[${timestamp}] ${text}`);
+            
+            // Keep only the last 50 lines
+            if (debugLines.length > 50) {
+                debugLines = debugLines.slice(-50);
+            }
+            
+            // Update the display
+            debugOutput.textContent = debugLines.join('\n');
+            
+            // Scroll to bottom
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        }
+        
+        // Event listeners
+        triggerManualBtn.addEventListener('click', () => {
+            addDebugLine('Manual queue update triggered');
+            simulateQueueRequest();
+        });
+        
+        resetQueueBtn.addEventListener('click', () => {
+            mockPosition = 500;
+            addDebugLine(`Queue position reset to ${mockPosition}`);
+            mockStatus.textContent = `Active (position: ${mockPosition})`;
+            previewOverlay.textContent = `Position: #${mockPosition}`;
+        });
+        
+        toggleMockBtn.addEventListener('click', () => {
+            isMockEnabled = !isMockEnabled;
+            toggleMockBtn.textContent = isMockEnabled ? 'Disable Mock' : 'Enable Mock';
+            mockStatus.textContent = isMockEnabled ? 
+                `Active (position: ${mockPosition})` : 
+                'Disabled';
+            
+            addDebugLine(`Mock system ${isMockEnabled ? 'enabled' : 'disabled'}`);
+        });
+        
+        togglePreviewBtn.addEventListener('click', () => {
+            isPreviewVisible = !isPreviewVisible;
+            previewOverlay.style.display = isPreviewVisible ? 'flex' : 'none';
+            togglePreviewBtn.textContent = isPreviewVisible ? 'Hide Preview' : 'Show Preview';
+        });
+        
+        // Listen for messages from the extension
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'EXTENSION_LOG') {
+                addDebugLine(`Extension: ${event.data.message}`);
+            }
+        });
+        
+        // Start automatic updates
+        setInterval(simulateQueueRequest, 10000);
+        
+        // Initial trigger
+        setTimeout(simulateQueueRequest, 1000);
+        
+        // Add connection helper for overlay.js
+        document.addEventListener('DOMContentLoaded', () => {
+            addDebugLine('Test page ready, waiting for extension overlay');
+            
+            // Add helper to detect when the extension's overlay is added
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+                        for (let i = 0; i < mutation.addedNodes.length; i++) {
+                            const node = mutation.addedNodes[i];
+                            if (node.id === 'queue-position-overlay') {
+                                addDebugLine('✅ Extension overlay detected!');
+                                observer.disconnect();
+                            }
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+        
+        // Log page load
+        addDebugLine('Test page loaded successfully');
+    </script>
+</body>
+</html>
